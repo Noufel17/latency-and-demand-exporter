@@ -1,4 +1,4 @@
-module noufel/custom-node-exporter
+module noufel/latency-node-exporter
 
 go 1.22.0
 

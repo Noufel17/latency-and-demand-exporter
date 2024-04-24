@@ -1,17 +1,18 @@
-FROM golang:latest AS builder
-
-WORKDIR /go/src/app
-
-COPY go.mod ./
-RUN go mod download
-
+# Build phase
+FROM golang:1.22 AS builder
+# Next line is just for debug
+RUN ldd --version
+WORKDIR /build
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
 COPY . .
-RUN go build -o latency-node-exporter
+WORKDIR /build/cmd
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o latency-exporter
 
-FROM alpine:latest AS runner
-
+# Production phase
+FROM alpine:3.14
+# Next line is just for debug
+RUN ldd; exit 0
 WORKDIR /app
-
-COPY --from=builder /go/src/app/latency-node-exporter ./
-
-ENTRYPOINT ["latency-node-exporter"]
+COPY --from=builder /build/cmd/latency-exporter .
+ENTRYPOINT [ "/app/latency-exporter"]

@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"noufel/latency-node-exporter/cmd/exporter"
 	"time"
-
-	exporter "noufel/custom-node-exporter/exporter"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
