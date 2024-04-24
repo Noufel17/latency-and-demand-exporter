@@ -11,7 +11,9 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
+
+	//"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/rest"
 )
 
 
@@ -122,9 +124,9 @@ func parseIperf3Latency(output []byte) (float64, time.Time, error) {
 
 func getClientset() (*kubernetes.Clientset, error) {
   // Create a config object using in-cluster config
-  // config, err := rest.InClusterConfig()
+  config, err := rest.InClusterConfig()
   // kubeadm cluster token config file location
-  config, err := clientcmd.BuildConfigFromFlags("", "/etc/kubernetes/kubeadm-client.conf")
+  //config, err := clientcmd.BuildConfigFromFlags("", "/etc/kubernetes/kubeadm-client.conf")
   if err != nil {
     return nil, err
   }

@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: latency-node-exporter-service
+spec:
+  selector:
+    app: latency-node-exporter  # Match pods with the label "app: latency-node-exporter"
+  ports:
+  - protocol: TCP
+    port: 9150
+    targetPort: 9150  # Port exposed by the latency-node-exporter container
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: latency-node-exporter
+spec:
+  hostname: latency-node-exporter  # Optional hostname for the pod
+  hostNetwork: true  # Enables host network namespace
+  containers:
+  - name: latency-node-exporter
+    image: noufeldocker77417/latency_node_exporter:1.0.0
+    ports:
+    - containerPort: 9150
+      name: metrics

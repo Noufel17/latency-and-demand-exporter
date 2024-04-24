@@ -1,20 +1,17 @@
-FROM golang:1.20.4-alpine as builder
-RUN apk add build-base
+FROM golang:latest AS builder
 
-WORKDIR /app
-# Cache and install dependencies
-COPY go.mod go.sum ./
+WORKDIR /go/src/app
+
+COPY go.mod ./
 RUN go mod download
 
-# Copy app files
 COPY . .
-# Build app
-RUN go build \
-  -o custom-node-exporter \
-  ./main.go
+RUN go build -o latency-node-exporter
 
-FROM golang:1.21.6-alpine as runner
+FROM alpine:latest AS runner
 
-COPY --from=builder /app/custom-node-exporter /usr/local/bin/custom-node-exporter
+WORKDIR /app
 
-CMD custom-node-exporter
+COPY --from=builder /go/src/app/latency-node-exporter ./
+
+ENTRYPOINT ["latency-node-exporter"]
