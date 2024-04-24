@@ -123,7 +123,8 @@ func parseIperf3Latency(output []byte) (float64, time.Time, error) {
 func getClientset() (*kubernetes.Clientset, error) {
   // Create a config object using in-cluster config
   // config, err := rest.InClusterConfig()
-  config, err := clientcmd.BuildConfigFromFlags("", "./worker.config")
+  // kubeadm cluster token config file location
+  config, err := clientcmd.BuildConfigFromFlags("", "/etc/kubernetes/kubeadm-client.conf")
   if err != nil {
     return nil, err
   }
