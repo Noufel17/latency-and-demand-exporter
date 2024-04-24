@@ -23,7 +23,7 @@ func NewCollector(getMetrics func() ([]NodeLatency, error)) *Collector {
         Name: "network_latency",
         Help: "Network latency in milliseconds for each node",
       },
-      []string{"destination"}, // Label for destination IP
+      []string{"destination","timestamp"}, // Label for destination node name and timestamp 
     ),
     getMetrics: getMetrics,
   }
@@ -48,6 +48,6 @@ func (c *Collector) Update() {
   }
   // export collected latencies
   for _, latency := range nodeLatencies {
-    c.latencyMetric.WithLabelValues(latency.Destination).Set(latency.Latency)
+    c.latencyMetric.WithLabelValues(latency.Destination,latency.Timestamp).Set(latency.Latency)
   }
 }

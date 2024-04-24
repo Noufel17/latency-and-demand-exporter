@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: iperf3-client
+spec:
+  selector:
+    matchLabels:
+      app: iperf3
+  template:
+    metadata:
+      labels:
+        app: iperf3
+    spec:
+      containers:
+      - name: iperf3
+        image: networkstatic/iperf3
+        command: ["/bin/sh", "-c"]
+        args: ["iperf3 -s"]  # Replace with actual iperf3 command later
+        ports:
+        - containerPort: 5201  # Default iperf3 port
+      hostNetwork: true        # Optional: Use host network for direct access

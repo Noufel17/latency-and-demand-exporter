@@ -3,20 +3,36 @@ package exporter
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"os/exec"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 
 type NodeLatency struct {
   Destination string  `json:"destination"`
   Latency    float64 `json:"latency"`
+  Timestamp string `json:"timestamp"`
+}
+
+type Iperf3Data struct {
+  Start    struct {
+    Timestamp struct {
+      Timesecs int64 `json:"timesecs"`
+    } `json:"timestamp"`
+  } `json:"start"`
+  End      struct {
+    Streams []struct {
+      Sender struct {
+        MeanRtt float64 `json:"mean_rtt"`
+      } `json:"sender"`
+    } `json:"streams"`
+  } `json:"end"`
 }
 
 func GetNodeLatencies() ([]NodeLatency, error) {
@@ -30,22 +46,22 @@ func GetNodeLatencies() ([]NodeLatency, error) {
 
   // List all nodes in the cluster
   nodes, err := clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
-  fmt.Println("Kubernetes nodes")
-  fmt.Println(nodes)
+  // fmt.Println("Kubernetes nodes")
+  // fmt.Println(nodes)
   if err != nil {
     return nil, err
   }
 
   for index, node := range nodes.Items {
-    fmt.Println("node data")
-    fmt.Println(node)
-    // mesure latency to worker nodes only
-    if node.Labels["node-role.kubernetes.io/worker"] == "true" {
+    // fmt.Println("node data")
+    // fmt.Println(node)
+    // mesure latency to worker nodes only DO IT
+    // if node.Labels["node-role.kubernetes.io/worker"] == "true" {
       nodeName := node.Name; // should work
       destIP := node.Status.Addresses[0].Address // should give the reachable IP between all nodes
 
       // Use iperf3 to measure latency
-      latency, err := measureLatency(destIP)
+      latency,timestamp, err := measureLatency(destIP)
       fmt.Printf("single latency %d \n",index)
       fmt.Println(latency)
       if err != nil {
@@ -56,75 +72,56 @@ func GetNodeLatencies() ([]NodeLatency, error) {
       nodeLatencies = append(nodeLatencies, NodeLatency{
         Destination: nodeName,
         Latency:    latency,
+        Timestamp: timestamp.Format("2006-01-02 15:04:05 UTC"),
       })
-    }
+    // }
   }
 
   return nodeLatencies, nil
 }
 
-func measureLatency(destIP string) (float64, error) {
+func measureLatency(destIP string) (float64,time.Time, error) {
   // Define iperf3 execution options (adjust as needed)
-  cmd := exec.Command("iperf3", "-c", destIP, "-p", "5201", "-t", "1", "-f", "json")
+  cmd := exec.Command("iperf3", "-c", destIP, "-p", "5201", "-t", "5", "-J")
 
   // Execute iperf3 and capture output
   output, err := cmd.CombinedOutput()
   if err != nil {
-    return 0, fmt.Errorf("error running iperf3: %w", err)
+    return 0, metav1.Now().Time,fmt.Errorf("error running iperf3: %w", err)
   }
 
   // Parse iperf3 JSON output to extract average latency
-  avgLatency, err := parseIperf3Latency(output)
+  avgLatency,timestamp, err := parseIperf3Latency(output)
   if err != nil {
-    return 0, fmt.Errorf("error parsing iperf3 output: %w", err)
+    return 0, metav1.Now().Time,fmt.Errorf("error parsing iperf3 output: %w", err)
   }
 
-  return avgLatency, nil
+  return avgLatency,timestamp, nil
 }
 
-func parseIperf3Latency(output []byte) (float64, error) {
-  var data map[string]interface{}
+
+
+func parseIperf3Latency(output []byte) (float64, time.Time, error) {
+  var data Iperf3Data
   err := json.Unmarshal(output, &data)
   if err != nil {
-    return 0, fmt.Errorf("error unmarshalling iperf3 JSON: %w", err)
-  }
-  fmt.Println("structured output data");
-  fmt.Println(data);
-
-  // Access nested data based on iperf3 JSON output format (adjust as needed)
-  intervalsInterface, ok := data["intervals"]
-  if !ok {
-    return 0, errors.New("missing 'intervals' field in iperf3 JSON")
+    return 0, time.Time{}, fmt.Errorf("error unmarshalling iperf3 JSON: %w", err)
   }
 
-  intervals, ok := intervalsInterface.([]interface{})
-  if !ok {
-    return 0, errors.New("invalid format for 'intervals' field in iperf3 JSON")
-  }
+  // Extract mean_rtt
+  meanRtt := data.End.Streams[0].Sender.MeanRtt
 
-  if len(intervals) == 0 {
-    return 0, errors.New("no intervals found in iperf3 JSON")
-  }
+  // Extract and format timestamp (assuming timesecs is Unix timestamp)
+  timestamp := time.Unix(data.Start.Timestamp.Timesecs, 0)
 
-  // Assuming the first interval contains average latency (check iperf3 documentation)
-  firstInterval := intervals[0].(map[string]interface{})
-  avgLatencyInterface, ok := firstInterval["avg_rtt_ms"]
-  if !ok {
-    return 0, errors.New("missing 'avg_rtt_ms' field in iperf3 JSON")
-  }
-
-  avgLatency, ok := avgLatencyInterface.(float64)
-  if !ok {
-    return 0, errors.New("invalid format for 'avg_rtt_ms' field in iperf3 JSON")
-  }
-
-  return avgLatency, nil
+  return meanRtt, timestamp, nil
 }
 
 
 func getClientset() (*kubernetes.Clientset, error) {
   // Create a config object using in-cluster config
-  config, err := rest.InClusterConfig()
+  // config, err := rest.InClusterConfig()
+  config, err := clientcmd.BuildConfigFromFlags("", "./worker.config")
   if err != nil {
     return nil, err
   }
