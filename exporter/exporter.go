@@ -3,6 +3,7 @@ package exporter
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os/exec"
@@ -46,17 +47,13 @@ func GetNodeLatencies() ([]NodeLatency, error) {
 
   // List all nodes in the cluster
   nodes, err := clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
-  // fmt.Println("Kubernetes nodes")
-  // fmt.Println(nodes)
   if err != nil {
     return nil, err
   }
 
   for index, node := range nodes.Items {
-    // fmt.Println("node data")
-    // fmt.Println(node)
-    // mesure latency to worker nodes only DO IT
-    // if node.Labels["node-role.kubernetes.io/worker"] == "true" {
+    // mesure latency to worker nodes only
+    if node.Labels["upf-candidate"] == "true" {
       nodeName := node.Name; // should work
       destIP := node.Status.Addresses[0].Address // should give the reachable IP between all nodes
 
@@ -74,7 +71,7 @@ func GetNodeLatencies() ([]NodeLatency, error) {
         Latency:    latency,
         Timestamp: timestamp.Format("2006-01-02 15:04:05 UTC"),
       })
-    // }
+    }
   }
 
   return nodeLatencies, nil
@@ -106,6 +103,11 @@ func parseIperf3Latency(output []byte) (float64, time.Time, error) {
   err := json.Unmarshal(output, &data)
   if err != nil {
     return 0, time.Time{}, fmt.Errorf("error unmarshalling iperf3 JSON: %w", err)
+  }
+
+  if len(data.End.Streams) == 0 {
+    // Handle empty streams (connection not established)
+    return 0, time.Time{}, errors.New("connection not established")
   }
 
   // Extract mean_rtt
