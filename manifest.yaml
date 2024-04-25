@@ -1,4 +1,37 @@
 apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: latency-exporter-sa
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: latency-exporter-role
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "watch", "list"]
+- apiGroups: [""] 
+  resources: ["pods"]
+  verbs: ["get", "watch", "list"]
+
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: latency-exporter-crb
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: latency-exporter-sa
+  namespace: default
+roleRef:
+  kind: ClusterRole 
+  name: latency-exporter-role 
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
 kind: Service
 metadata:
   name: latency-node-exporter-service
@@ -16,8 +49,9 @@ kind: Pod
 metadata:
   name: latency-node-exporter
 spec:
-  hostname: latency-node-exporter  # Optional hostname for the pod
-  hostNetwork: true  # Enables host network namespace
+  serviceAccountName: latency-exporter-sa
+  hostname: latency-node-exporter 
+  hostNetwork: true
   containers:
   - name: latency-node-exporter
     image: noufeldocker77417/latency_node_exporter:1.0.0

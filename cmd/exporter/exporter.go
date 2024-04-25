@@ -53,7 +53,7 @@ func GetNodeLatencies() ([]NodeLatency, error) {
     return nil, err
   }
 
-  for index, node := range nodes.Items {
+  for _, node := range nodes.Items {
     // mesure latency to worker nodes only
     if node.Labels["upf-candidate"] == "true" {
       nodeName := node.Name; // should work
@@ -61,8 +61,6 @@ func GetNodeLatencies() ([]NodeLatency, error) {
 
       // Use iperf3 to measure latency
       latency,timestamp, err := measureLatency(destIP)
-      fmt.Printf("single latency %d \n",index)
-      fmt.Println(latency)
       if err != nil {
         log.Printf("Error measuring latency to node %s : addresse %s : %v",nodeName ,destIP, err)
         continue
