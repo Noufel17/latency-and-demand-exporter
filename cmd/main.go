@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -33,17 +34,40 @@ func main() {
 	go func() {
 		for {
 			collector.Update()
-			time.Sleep(time.Second)
+			time.Sleep(time.Second * 10)
 		}
 	}()
 
-  mux := http.NewServeMux()
+  promMux := http.NewServeMux()
+  http.HandleFunc("/export", returnLatestValue)
+  
+  log.Printf("listening exporter on %q/export", ":9150")
+  if err := http.ListenAndServe(":9150", nil); err != nil {
+    log.Fatalf("cannot start exporter: %s", err)
+  }
   promHandler := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
-  mux.Handle("/metrics", promHandler)
+  promMux.Handle("/metrics", promHandler)
 
   port := fmt.Sprintf(":%d", *promPort)
   log.Printf("starting exporter on %q/metrics", port)
-  if err := http.ListenAndServe(port, mux); err != nil {
+  if err := http.ListenAndServe(port, promMux); err != nil {
     log.Fatalf("cannot start exporter: %s", err)
   }
+}
+
+func returnLatestValue(w http.ResponseWriter, r *http.Request){
+  defer r.Body.Close()
+  
+	jsonData, err := json.Marshal(exporter.LatestValues)
+  if err != nil {
+    // Handle marshalling error
+    http.Error(w, "Error marshalling data to JSON: "+err.Error(), http.StatusInternalServerError)
+    return
+  }
+
+  // Set the content type header to application/json
+  w.Header().Set("Content-Type", "application/json")
+
+  // Write the JSON data to the response body
+  w.Write(jsonData)
 }

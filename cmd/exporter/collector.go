@@ -15,6 +15,7 @@ type Collector struct {
   getMetrics    func() ([]NodeLatency, error) // Changed to return an array of NodeLatency
 }
 
+var LatestValues []NodeLatency
 // NewCollector creates a new Collector instance
 func NewCollector(getMetrics func() ([]NodeLatency, error)) *Collector {
   return &Collector{
@@ -42,6 +43,7 @@ func (c *Collector) Update() {
 // collect latencies
   nodeLatencies, err := c.getMetrics()
   fmt.Println(nodeLatencies)
+  LatestValues = nodeLatencies
   if err != nil {
     log.Printf("Error retrieving node latencies: %v", err)
     return

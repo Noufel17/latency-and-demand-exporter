@@ -78,8 +78,8 @@ func GetNodeLatencies() ([]NodeLatency, error) {
 }
 
 func measureLatency(destIP string) (float64,time.Time, error) {
-  // Define iperf3 execution options (adjust as needed)
-  cmd := exec.Command("iperf3", "-c", destIP, "-p", "5201", "-t", "5", "-J")
+
+  cmd := exec.Command("iperf", "-c", destIP, "-p", "5201", "-t", "5", "-J")
 
   // Execute iperf3 and capture output
   output, err := cmd.CombinedOutput()

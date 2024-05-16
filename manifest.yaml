@@ -30,32 +30,37 @@ roleRef:
   kind: ClusterRole 
   name: latency-exporter-role 
   apiGroup: rbac.authorization.k8s.io
+
 ---
-apiVersion: v1
-kind: Service
+apiVersion: apps/v1
+kind: DaemonSet
 metadata:
-  name: latency-node-exporter-service
+  name: latency-node-exporter-5g
 spec:
   selector:
-    app: latency-node-exporter  # Match pods with the label "app: latency-node-exporter"
-  ports:
-  - protocol: TCP
-    port: 9150
-    targetPort: 9150  # Port exposed by the latency-node-exporter container
-  type: ClusterIP
----
-apiVersion: v1
-kind: Pod
-metadata:
-  name: latency-node-exporter
-spec:
-  serviceAccountName: latency-exporter-sa
-  hostname: latency-node-exporter 
-  hostNetwork: true
-  containers:
-  - name: latency-node-exporter
-    image: noufeldocker77417/latency_node_exporter:1.0.0
-    imagePullPolicy: Always
-    ports:
-    - containerPort: 9150
-      name: metrics
+    matchLabels:
+      app: latency-node-exporter-5g
+  template:
+    metadata:
+      labels:
+        app: latency-node-exporter-5g
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: upf-candidate
+                operator: In
+                values:
+                - "true"
+      serviceAccountName: latency-exporter-sa
+      hostname: latency-node-exporter-5g
+      hostNetwork: true
+      containers:
+        - name: latency-node-exporter
+          image: noufeldocker77417/latency_node_exporter:1.0.1
+          imagePullPolicy: IfNotPresent
+          ports:
+          - containerPort: 9150
+            name: metrics   
