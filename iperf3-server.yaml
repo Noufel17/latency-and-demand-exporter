@@ -5,15 +5,15 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: iperf
+      app: iperf3
   template:
     metadata:
       labels:
-        app: iperf
+        app: iperf3
     spec:
       containers:
       - name: iperf
-        image: iitgdocker/iperf-server
+        image: networkstatic/iperf3
         command: ["/bin/sh", "-c"]
         args: ["iperf3 -s"] 
         ports:

@@ -8,7 +8,7 @@ WORKDIR /build/cmd
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o latency-exporter
 
 # Production phase
-FROM mlabbe/iperf
+FROM networkstatic/iperf3
 WORKDIR /app
 COPY --from=builder /build/cmd/latency-exporter .
 ENTRYPOINT [ "/app/latency-exporter"]
