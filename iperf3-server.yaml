@@ -15,7 +15,7 @@ spec:
       - name: iperf
         image: networkstatic/iperf3
         command: ["/bin/bash", "-c"]
-        args: ["for ((i=5201; i<=$MAX_PORT; i++)); do iperf3 -s -p $i; done"] 
+        args: ["for ((i=5201; i<=$MAX_PORT; i++)); do iperf3 -s -p $i & sleep 0.1; done"] 
         env:
         - name: MAX_PORT
           value: "5220"

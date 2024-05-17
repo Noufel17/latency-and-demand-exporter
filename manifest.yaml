@@ -59,7 +59,7 @@ spec:
       hostNetwork: true
       containers:
         - name: latency-node-exporter
-          image: noufeldocker77417/latency_node_exporter:1.0.2
+          image: noufeldocker77417/latency_node_exporter:1.0.3
           imagePullPolicy: IfNotPresent
           ports:
           - containerPort: 9150
