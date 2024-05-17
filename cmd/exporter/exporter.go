@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
+	"strconv"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -77,24 +79,88 @@ func GetNodeLatencies() ([]NodeLatency, error) {
   return nodeLatencies, nil
 }
 
-func measureLatency(destIP string) (float64,time.Time, error) {
-
-  cmd := exec.Command("iperf", "-c", destIP, "-p", "5201", "-t", "5", "-J")
-
-  // Execute iperf3 and capture output
-  output, err := cmd.CombinedOutput()
+func measureLatency(destIP string) (float64, time.Time, error) {
+  // Get maximum port number from environment variable
+  maxPort, err := strconv.Atoi(os.Getenv("MAX_PORT"))
   if err != nil {
-    return 0, metav1.Now().Time,fmt.Errorf("error running iperf3: %w", err)
+    return 0, metav1.Now().Time, fmt.Errorf("error getting MAX_PORT environment variable: %w", err)
   }
 
-  // Parse iperf3 JSON output to extract average latency
-  avgLatency,timestamp, err := parseIperf3Latency(output)
-  if err != nil {
-    return 0, metav1.Now().Time,fmt.Errorf("error parsing iperf3 output: %w", err)
+  // Retry parameters
+  maxRetries := 3 
+  retryDelay := 1 * time.Second
+
+  var avgLatency float64
+  var timestamp time.Time
+  var lastErr error
+
+  for port := 5201; port <= maxPort; port++ {
+    for attempt := 0; attempt < maxRetries; attempt++ {
+      // Build the command with current port
+      cmd := exec.Command("iperf3", "-c", destIP, "-p", strconv.Itoa(port), "-t", "5", "-J")
+
+      // Execute iperf3 and capture output
+      output, err := cmd.CombinedOutput()
+
+      // Check for errors
+      if err != nil {
+        return 0, metav1.Now().Time, fmt.Errorf("error running iperf3: %w", err)
+      }
+
+      // Parse iperf3 JSON output
+      var data map[string]interface{}
+      if err := json.Unmarshal(output, &data); err != nil {
+        return 0, metav1.Now().Time, fmt.Errorf("error parsing iperf3 output: %w", err)
+      }
+
+      // Check for "error" field and specific message
+      if errorMessage, ok := data["error"].(string); ok && errorMessage == "the server is busy running a test. try again later" {
+        lastErr = fmt.Errorf("server busy on port %d, retrying...", port)
+        time.Sleep(retryDelay)
+        continue // Retry on specific error message
+      }
+
+      // Successful execution, parse latency
+      avgLatency, timestamp, err = parseIperf3Latency(output)
+      if err != nil {
+        return 0, metav1.Now().Time, fmt.Errorf("error parsing iperf3 output: %w", err)
+      }
+
+      // Break out of retry loop on successful execution
+      break
+    }
+
+    // Exit the port loop if successful execution occurs
+    if lastErr == nil {
+      break
+    }
   }
 
-  return avgLatency,timestamp, nil
+  if lastErr != nil {
+    return 0, metav1.Now().Time, lastErr
+  }
+
+  return avgLatency, timestamp, nil
 }
+
+
+// func measureLatency(destIP string) (float64,time.Time, error) {
+//   cmd := exec.Command("iperf3", "-c", destIP, "-p", "5201", "-t", "5", "-J")
+
+//   // Execute iperf3 and capture output
+//   output, err := cmd.CombinedOutput()
+//   if err != nil {
+//     return 0, metav1.Now().Time,fmt.Errorf("error running iperf3: %w", err)
+//   }
+
+//   // Parse iperf3 JSON output to extract average latency
+//   avgLatency,timestamp, err := parseIperf3Latency(output)
+//   if err != nil {
+//     return 0, metav1.Now().Time,fmt.Errorf("error parsing iperf3 output: %w", err)
+//   }
+
+//   return avgLatency,timestamp, nil
+// }
 
 
 

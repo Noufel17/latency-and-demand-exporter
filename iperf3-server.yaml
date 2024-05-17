@@ -14,8 +14,9 @@ spec:
       containers:
       - name: iperf
         image: networkstatic/iperf3
-        command: ["/bin/sh", "-c"]
-        args: ["iperf3 -s"] 
-        ports:
-        - containerPort: 5201 
+        command: ["/bin/bash", "-c"]
+        args: ["for ((i=5201; i<=$MAX_PORT; i++)); do iperf3 -s -p $i; done"] 
+        env:
+        - name: MAX_PORT
+          value: "5220"
       hostNetwork: true        

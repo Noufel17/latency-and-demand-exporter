@@ -64,3 +64,6 @@ spec:
           ports:
           - containerPort: 9150
             name: metrics   
+          env:
+          - name: MAX_PORT
+            value: "5220"
