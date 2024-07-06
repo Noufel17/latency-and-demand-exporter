@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: etcd-5g-pv
+spec:
+  storageClassName: "standard" 
+  capacity:
+    storage: 1Gi 
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /opt/etcd-5g
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - kind-worker
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: etcd-5g-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi 
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: etcd-5g-client
+spec:
+  type: NodePort
+  ports:
+  - name: etcd-5g-client
+    port: 2379
+    protocol: TCP
+    targetPort: 2379
+  selector:
+    app: etcd-5g
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: etcd-5g
+spec:
+  clusterIP: None
+  ports:
+  - port: 2379
+    name: client
+  - port: 2380
+    name: peer
+  selector:
+    app: etcd-5g
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: etcd-5g
+spec:
+  serviceName: etcd-5g
+  replicas: 1
+  selector:
+    matchLabels:
+      app: etcd-5g
+  template:
+    metadata:
+      labels:
+        app: etcd-5g
+    spec:
+      containers:
+      - name: etcd
+        image: quay.io/coreos/etcd:latest 
+        command:
+          - /usr/local/bin/etcd
+          - --name=etcd-5g
+          - --data-dir=/var/lib/etcd
+          - --listen-client-urls=http://0.0.0.0:2379
+          - --advertise-client-urls=http://0.0.0.0:2379
+        ports:
+        - containerPort: 2379
+          name: client
+        - containerPort: 2380
+          name: peer
+        volumeMounts:
+          - name: etcd-data
+            mountPath: /var/lib/etcd
+      volumes:
+        - name: etcd-data
+          persistentVolumeClaim:
+            claimName: etcd-5g-pvc

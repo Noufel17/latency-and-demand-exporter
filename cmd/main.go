@@ -5,9 +5,12 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"noufel/latency-node-exporter/cmd/exporter"
 	"time"
+
+	"math/rand"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -40,6 +43,7 @@ func main() {
 
   promMux := http.NewServeMux()
   http.HandleFunc("/export", returnLatestValue)
+  http.HandleFunc("/demand", exportDemand)
   
   log.Printf("listening exporter on %q/export", ":9150")
   if err := http.ListenAndServe(":9150", nil); err != nil {
@@ -59,6 +63,34 @@ func returnLatestValue(w http.ResponseWriter, r *http.Request){
   defer r.Body.Close()
   
 	jsonData, err := json.Marshal(exporter.LatestValues)
+  if err != nil {
+    // Handle marshalling error
+    http.Error(w, "Error marshalling data to JSON: "+err.Error(), http.StatusInternalServerError)
+    return
+  }
+
+  // Set the content type header to application/json
+  w.Header().Set("Content-Type", "application/json")
+
+  // Write the JSON data to the response body
+  w.Write(jsonData)
+}
+
+type Demand struct {
+	Demand float64
+}
+
+func roundFloat(val float64, precision uint) float64 {
+    ratio := math.Pow(10, float64(precision))
+    return math.Round(val*ratio) / ratio
+}
+
+func exportDemand(w http.ResponseWriter, r *http.Request){
+  defer r.Body.Close()
+	randomDemand := rand.Float64()
+
+  
+	jsonData, err := json.Marshal(Demand{Demand:roundFloat(randomDemand,4)})
   if err != nil {
     // Handle marshalling error
     http.Error(w, "Error marshalling data to JSON: "+err.Error(), http.StatusInternalServerError)
