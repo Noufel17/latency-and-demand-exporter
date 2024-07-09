@@ -90,7 +90,7 @@ func exportDemand(w http.ResponseWriter, r *http.Request){
 	randomDemand := rand.Float64()
 
   
-	jsonData, err := json.Marshal(Demand{Demand:roundFloat(randomDemand,4)})
+	jsonData, err := json.Marshal(Demand{Demand:roundFloat(randomDemand,5)})
   if err != nil {
     // Handle marshalling error
     http.Error(w, "Error marshalling data to JSON: "+err.Error(), http.StatusInternalServerError)
